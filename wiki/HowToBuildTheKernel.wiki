@@ -1,4 +1,6 @@
-#summary How To Build The Kernel
+#summary How to build the kernel (old)
+
+*STATUS* : This is a description of building the old versions of DragonOS (0.06 and below). It's provided here for completeness.
 
 = Introduction =
 The kernel (kernel.bin) is the main component of the OS. It is responsible for setting up and handling the GDTs, IDTs, ISRs, IRQs, memory management routines, and so on. There are several scripts which automate the task of building the kernel (and the OS).
