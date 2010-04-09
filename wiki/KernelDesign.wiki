@@ -145,7 +145,7 @@ In addition to the above, several non-storage devices may also be accessed via g
 Typical Computer Layout:
 	/				(/)
 	/hd0			(/vfs/dev/hd/0/0)
-	/hd0/dragon*	(/vfs/dev/hd/0/0/dragon)
+	/hd0/dragon	(/vfs/dev/hd/0/0/dragon)
 	/hd1			(/vfs/dev/hd/0/1)
 	/dvd0			(/vfs/dev/rd/dvd/0)
 	/usb0			(/vfs/dev/flash/thumb/0)
