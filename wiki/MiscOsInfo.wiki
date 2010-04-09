@@ -1,3 +1,4 @@
+#summary Miscellaneous operating system information
 #labels Phase-Design
 Executables will only be executed under the following conditions:
  * The executable is of ELF format (or another supported format) with a machine type equivalent of what the machine is able to execute.
