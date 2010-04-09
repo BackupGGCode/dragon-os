@@ -111,27 +111,27 @@ The above devices may be found in the corresponding /vfs/dev directory.
 		/hd/N/X
 
 	Optical Disc Drives
-		/rd/A/N			[A = (cd, dvd, bd)]
+		/rd/A/N			(A = (cd, dvd, bd))
 
 	Removable Floppy Drives
 		/fd/N/X
 
 	Flash/USB Drives
-		/flash/A/N		[A = (thumb, sdcard)]
+		/flash/A/N		(A = (thumb, sdcard))
 
 	Network Sharing
-		/net/A/N		[A = (bt, eth)]
+		/net/A/N		(A = (bt, eth))
 
 	Live Systems
 		/ram
-		/pipe/N			[A = (*)]
+		/pipe/N			(A = (*))
 
 In addition to the above, several non-storage devices may also be accessed via general file access routines and I/O control routines:
 	Human Interface Device
-		/hid/A/N		[A = (keyboard, mouse, gamepad, remote, midi)]
+		/hid/A/N		(A = (keyboard, mouse, gamepad, remote, midi))
 
 	Recording Devices
-		/rec/A/N		[A = (cam, mic)]
+		/rec/A/N		(A = (cam, mic))
 
 	Displays
 		/monitor/N		(physical device)
@@ -143,14 +143,14 @@ In addition to the above, several non-storage devices may also be accessed via g
 		/spu/N
 		
 Typical Computer Layout:
-	/				[/]
-	/hd0			[/vfs/dev/hd/0/0]
-	/hd0/dragon*	[/vfs/dev/hd/0/0/dragon]
-	/hd1			[/vfs/dev/hd/0/1]
-	/dvd0			[/vfs/dev/rd/dvd/0]
-	/usb0			[/vfs/dev/flash/thumb/0]
-	/usb1			[/vfs/dev/flash/thumb/1]
-	/vfs			[/vfs]
+	/				(/)
+	/hd0			(/vfs/dev/hd/0/0)
+	/hd0/dragon*	(/vfs/dev/hd/0/0/dragon)
+	/hd1			(/vfs/dev/hd/0/1)
+	/dvd0			(/vfs/dev/rd/dvd/0)
+	/usb0			(/vfs/dev/flash/thumb/0)
+	/usb1			(/vfs/dev/flash/thumb/1)
+	/vfs			(/vfs)
 
 When the system starts up, the VFS creates the root directory (/), and then mounts it-self (as the "vfs" device) to /vfs. After the necessary kernel drivers are loaded, the file system drivers are loaded. Once that is done, the kernel invokes certain functionality of the FS drivers which cause the FS drivers to find all devices that said FS driver can control. The kernel then mounts these devices into the root directory (under possibly different names).
 
