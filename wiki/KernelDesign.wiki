@@ -1,3 +1,5 @@
+#summary The design of the kernel
+#labels Featured,Phase-Design
 =Overview=
 The DragonOS kernel ("Colonel") is the engine of DragonOS. All of the other processes are basically peripherals and luxuries. None of them would be of any use without Colonel. This document aims to perfectly describe the design and implementation goals (whether acheived or not) of Colonel. It elaborates on the design decisions and the plans of Colonel.  Because DragonOS is meant to be used as a gaming operating system, Colonel has given graphics, sound, and input development priority over general application development. It is important to note that file system and full architecture support is of a higher priority than that.
 
