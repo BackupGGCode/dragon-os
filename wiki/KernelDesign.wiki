@@ -124,7 +124,7 @@ The above devices may be found in the corresponding /vfs/dev directory.
 
 	Live Systems
 		/ram
-		/pipe/N			(A = (*))
+		/pipe/N			(A = (any))
 
 In addition to the above, several non-storage devices may also be accessed via general file access routines and I/O control routines:
 	Human Interface Device
