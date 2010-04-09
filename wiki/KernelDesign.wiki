@@ -1,5 +1,5 @@
 #summary The design of the kernel
-#labels Featured,Phase-Design
+#labels Featured,Phase-Design,Phase-Implementation
 =Overview=
 The DragonOS kernel ("Colonel") is the engine of DragonOS. All of the other processes are basically peripherals and luxuries. None of them would be of any use without Colonel. This document aims to perfectly describe the design and implementation goals (whether acheived or not) of Colonel. It elaborates on the design decisions and the plans of Colonel.  Because DragonOS is meant to be used as a gaming operating system, Colonel has given graphics, sound, and input development priority over general application development. It is important to note that file system and full architecture support is of a higher priority than that.
 
@@ -12,6 +12,160 @@ Drivers are ELF executables that are loaded into their own address space and han
 =Applications=
 Applications are dealt with in a special way. Following an Android OS styled model, applications are split into different types: Activities, and services. An activity is an app which takes up screen space (and thus has its own workspace), a service is an app which does not take up any screen space. When an application is launched, it is either launched as an activity, or as a service. When an application is launched as an activity, it is given a space on the screen just for it. This takes up the whole screen except for the bar at the top. (Read dragon_design.txt for more information.)
 
-_INCOMPLETE DOCUMENT_
+=Processes and Threads=
+A process is simply a virtual address space. A thread is an execution context within an address space. Each thread consumes CPU time, and is given a priority.
 
-*NOTE* VFS section coming in a few hours.
+The CPU timer is set to go off every 10 milliseconds (100 times a second), each priority level represents 5 milliseconds. The lowest acceptable priority level is 1. Due to the 10 millisecond timer, a thread will alternate between -5ms and +5ms. Following is an example:
+
+	Let T = a single timer interrupt, 10 milliseconds.
+	
+	Let A represent thread 1 of process 1.
+	Let B represent thread 2 of process 1.
+	Let C represent thread 3 of process 1.
+	`A' has a priority level of 1; 5ms.
+	`B' has a priority level of 3; 15ms.
+	`C' has a priority level of 4; 20ms.
+	
+	Cycle 1:
+		`B' runs at a duration of T1.
+		`C' runs at a duration of T2.
+	Cycle 2:
+		`A' runs at a duration of T1.
+		`B' runs at a duration of T2.
+		`C' runs at a duration of T2.
+	Cycle 3:
+		`B' runs at a duration of T1.
+		`C' runs at a duration of T2.
+
+At the end of every two cycles, as you can see above, the thread running time will have been the total amount of time the thread expected for those two cycles. Clearly, if a thread sets itself to a priority of one, it considers itself fairly unimportant, performance wise. Therefore, the skipping of the process between cycles should be acceptable.
+
+NOTE: Apps can YIELD the remainder of their current time slice, or a number of time slices, to the scheduler to "fund" other apps. There are some restrictions, however. First, the YIELD call will wait for the next timer interrupt to occur before any effect is taken. (This does not mean code after YIELD will run, but that YIELD will, basically, wait for the rest of the current time slice to complete before the app is switched out.) Second, YIELD cannot give time to any specific app. Although, it would be an interesting concept--and could help in a few scenarious--it will not be done out of malicious concerns.
+
+Some processes are not constantly active. Aside from processes which continuously yield their time, there are also ``service'' processes. ``Services,'' as I will refer to them, are basically user-mode drivers. They can be activated when necessary, and might be activated many times on regular schedules. For example, every time the mouse moves, a hardware interrupt (known as an IRQ) will signal the mouse driver. The mouse driver will then calculate the new position, and,--if it's different from the previous position,--it will signal the XX-core server's GX branch. The GX process might then prepare to render a new frame.
+
+NOTE: The X-eXperience core (XX-core) is a collection of APIs which certain drivers must conform to, and applications may take advantage of. These APIs are:
+	Graphic eXperience (GX); the rendering API
+	Audio eXperience (AX); the sound/music API
+	Input eXperience (IX); the gaming input API
+	User Interface eXperience (UX); the windowing API
+	
+Learn more in the XX-core.txt document.
+
+=Virtual File System=
+The virtual file system communicates directly with file system services. Programs can open(), close(), read(), write(), etc. files through the VFS. The format for a path is as follows:
+
+	Absolute access to a file on a specific device:
+		/devicename/directory/subdirectory/file.txt
+	
+	Absolute access to a file on the current device:
+		//directory/subdirectory/file.txt
+	
+	Absolute access to a file in the user's home directory:
+		~/directory/subdirectory/file.txt
+	
+	Relative access to a file in the previous directory:
+		../file.txt
+	
+	Relative access to a file in the current directory
+		file.txt
+
+Basically, "/" is a path separator ("\" is also supported, but is discouraged). A device name can be specified to access a specific device, e.g., "usb0:/mystuff/tuesday's schedule.txt."
+
+In addition, there are also built in device aliases. "sys" references the exact path to the system folder. "usr" references the exact path to the user folder. "home:/" is the same as "~/". ".." can be used to reference a directory before another. "." can be used to reference the current directory. "/" as the first character of the path references the root folder of the current device. ":" must exist directly after a device's name to denote that a device is being referred to.
+
+The following all point to the same file:
+	/hd0/home/aaron/doc/world_domination.txt
+	/vfs/dev/hd/0/0/home/aaron/doc/world_domination.txt
+	~/doc/world_domination.txt
+	//home/aaron/doc/world_domination.txt
+	doc/world_domination.txt (Assuming the current directory is "~/")
+
+The following all point to the same device:
+	/hd0
+	/vfs/dev/hd/0/0
+
+General devices ("N" is a number which is equal to or greater than 0):
+	Hard Disk Drive
+		hdN				Permanent Hard Drive [Partition]
+
+	Optical Disc Drives
+		cdN				Removable Compact Disc
+		dvdN			Removable Digital Video Disc
+		bdN				Removable Blu-Ray Disc
+
+	Removable Floppy Drives
+		fdN				Removable Floppy Disc
+
+	Flash/USB Drives
+		sdN				Removable MicroSD Drive
+		usbN			Removable USB Flash Drive
+
+	Network Sharing
+		netN			LAN File Sharing
+
+	Virtual File System
+		vfs				Virtual File System
+
+The above devices may be found in the corresponding /vfs/dev directory.
+	Hard Disk Drive
+		/hd/N/X
+
+	Optical Disc Drives
+		/rd/A/N			[A = (cd, dvd, bd)]
+
+	Removable Floppy Drives
+		/fd/N/X
+
+	Flash/USB Drives
+		/flash/A/N		[A = (thumb, sdcard)]
+
+	Network Sharing
+		/net/A/N		[A = (bt, eth)]
+
+	Live Systems
+		/ram
+		/pipe/N			[A = (*)]
+
+In addition to the above, several non-storage devices may also be accessed via general file access routines and I/O control routines:
+	Human Interface Device
+		/hid/A/N		[A = (keyboard, mouse, gamepad, remote, midi)]
+
+	Recording Devices
+		/rec/A/N		[A = (cam, mic)]
+
+	Displays
+		/monitor/N		(physical device)
+		/screen/N		(virtual device)
+
+	Processors
+		/cpu/N
+		/gpu/N
+		/spu/N
+		
+Typical Computer Layout:
+	/				[/]
+	/hd0			[/vfs/dev/hd/0/0]
+	/hd0/dragon*	[/vfs/dev/hd/0/0/dragon]
+	/hd1			[/vfs/dev/hd/0/1]
+	/dvd0			[/vfs/dev/rd/dvd/0]
+	/usb0			[/vfs/dev/flash/thumb/0]
+	/usb1			[/vfs/dev/flash/thumb/1]
+	/vfs			[/vfs]
+
+When the system starts up, the VFS creates the root directory (/), and then mounts it-self (as the "vfs" device) to /vfs. After the necessary kernel drivers are loaded, the file system drivers are loaded. Once that is done, the kernel invokes certain functionality of the FS drivers which cause the FS drivers to find all devices that said FS driver can control. The kernel then mounts these devices into the root directory (under possibly different names).
+
+When the kernel initializes the VFS, the VFS mounts itself to the /vfs directory. Upon enumerating the devices, the kernel will store any storage devices in the VFS's device directory (/vfs/dev). All functioning devices, and at least the device the OS booted from, is to be booted at `/' (the root directory). Although all functioning storage devices (and partitions) are mounted automatically, they may be unmounted at any time. The kernel may also reference a configuration file which may blacklist certain disks/ partitions from being mounted automatically, or even at all.
+
+=Initialization and Configuration=
+The installed kernel binary has a module package applied to it. The kernel initializes all of the drivers (which are usually generic) contained within that package. The kernel proceeds to read a (small) configuration file, which gives an absolutely basic understanding of the environment the kernel is in. If the configuration file built into the package contained a path to another configuration file, the new configuration file would be loaded.
+
+NOTE: It is standard practice in DragonOS to give a configuration file a ``.conf'' extension. If, for some reason, a four letter extension is not available, ``.cnf'' will do.
+
+The configuration files may point to other configuration files. All configuration files can provide a queue of startup programs for the kernel to execute.
+
+The XX-core API doubles as a driver specification. After all kernel mode and file system drivers have been loaded, the XX-core API will be initialized. The API will attempt to use the drivers it requires; if the attempt fails, the OS will NOT continue loading. It will instead dump an error to the screen, and present a terminal. The terminal can be used for rebooting, attempting to rectify the problem, et cetera. The terminal would exist in text-mode if GX failed to load. If UX failed to load, the terminal would be graphical.
+
+NOTE: If AX or IX fails to load, XX-core is not considered as having failed to load. Rather, warnings would be presented by the UX API at start-up.
+
+
+~_INCOMPLETE DOCUMENT_~
