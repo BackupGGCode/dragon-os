@@ -52,109 +52,13 @@ NOTE: The X-eXperience core (XX-core) is a collection of APIs which certain driv
 Learn more in the XX-core.txt document.
 
 =Virtual File System=
-The virtual file system communicates directly with file system services. Programs can open(), close(), read(), write(), etc. files through the VFS. The format for a path is as follows:
+The VFS of DragonOS is somewhat UNIX/Mac-like. The VFS begins at the standard root directory, "/." Within the root directory, several mounts exist. Applications, Devices, Home, System, and Volumes. Devices is the "Devices" file system, it lists hardware connected to the computer. System is a mount of the OS's installation directory. Applications is the mount of the OS's graphical applications directory. Home is the mount of the OS's home directory (where users go). The Volumes directory is an initially empty directory that doesn't physically exist on disk. Rather, it is an area for storage device partitions may be mounted.
 
-	Absolute access to a file on a specific device:
-		/devicename/directory/subdirectory/file.txt
-	
-	Absolute access to a file on the current device:
-		//directory/subdirectory/file.txt
-	
-	Absolute access to a file in the user's home directory:
-		~/directory/subdirectory/file.txt
-	
-	Relative access to a file in the previous directory:
-		../file.txt
-	
-	Relative access to a file in the current directory
-		file.txt
+All names in the VFS are case sensitive, unless a case insensitive file system previously mounted is being used. The VFS follows standard UNIX practices in regards to path specifications.
 
-Basically, "/" is a path separator ("\" is also supported, but is discouraged). A device name can be specified to access a specific device, e.g., "usb0:/mystuff/tuesday's schedule.txt."
+The devices FS lists all storage devices, human interface devices, video/audio devices, and other devices that can logically be interacted with via ioctl() commands and/or fread()/fwrite() commands.
 
-In addition, there are also built in device aliases. "sys" references the exact path to the system folder. "usr" references the exact path to the user folder. "home:/" is the same as "~/". ".." can be used to reference a directory before another. "." can be used to reference the current directory. "/" as the first character of the path references the root folder of the current device. ":" must exist directly after a device's name to denote that a device is being referred to.
-
-The following all point to the same file:
-	/hd0/home/aaron/doc/world_domination.txt
-	/vfs/dev/hd/0/0/home/aaron/doc/world_domination.txt
-	~/doc/world_domination.txt
-	//home/aaron/doc/world_domination.txt
-	doc/world_domination.txt (Assuming the current directory is "~/")
-
-The following all point to the same device:
-	/hd0
-	/vfs/dev/hd/0/0
-
-General devices ("N" is a number which is equal to or greater than 0):
-	Hard Disk Drive
-		hdN				Permanent Hard Drive [Partition]
-
-	Optical Disc Drives
-		cdN				Removable Compact Disc
-		dvdN			Removable Digital Video Disc
-		bdN				Removable Blu-Ray Disc
-
-	Removable Floppy Drives
-		fdN				Removable Floppy Disc
-
-	Flash/USB Drives
-		sdN				Removable MicroSD Drive
-		usbN			Removable USB Flash Drive
-
-	Network Sharing
-		netN			LAN File Sharing
-
-	Virtual File System
-		vfs				Virtual File System
-
-The above devices may be found in the corresponding /vfs/dev directory.
-	Hard Disk Drive
-		/hd/N/X
-
-	Optical Disc Drives
-		/rd/A/N			(A = (cd, dvd, bd))
-
-	Removable Floppy Drives
-		/fd/N/X
-
-	Flash/USB Drives
-		/flash/A/N		(A = (thumb, sdcard))
-
-	Network Sharing
-		/net/A/N		(A = (bt, eth))
-
-	Live Systems
-		/ram
-		/pipe/N			(A = (any))
-
-In addition to the above, several non-storage devices may also be accessed via general file access routines and I/O control routines:
-	Human Interface Device
-		/hid/A/N		(A = (keyboard, mouse, gamepad, remote, midi))
-
-	Recording Devices
-		/rec/A/N		(A = (cam, mic))
-
-	Displays
-		/monitor/N		(physical device)
-		/screen/N		(virtual device)
-
-	Processors
-		/cpu/N
-		/gpu/N
-		/spu/N
-		
-Typical Computer Layout:
-	/				(/)
-	/hd0			(/vfs/dev/hd/0/0)
-	/hd0/dragon	(/vfs/dev/hd/0/0/dragon)
-	/hd1			(/vfs/dev/hd/0/1)
-	/dvd0			(/vfs/dev/rd/dvd/0)
-	/usb0			(/vfs/dev/flash/thumb/0)
-	/usb1			(/vfs/dev/flash/thumb/1)
-	/vfs			(/vfs)
-
-When the system starts up, the VFS creates the root directory (/), and then mounts it-self (as the "vfs" device) to /vfs. After the necessary kernel drivers are loaded, the file system drivers are loaded. Once that is done, the kernel invokes certain functionality of the FS drivers which cause the FS drivers to find all devices that said FS driver can control. The kernel then mounts these devices into the root directory (under possibly different names).
-
-When the kernel initializes the VFS, the VFS mounts itself to the /vfs directory. Upon enumerating the devices, the kernel will store any storage devices in the VFS's device directory (/vfs/dev). All functioning devices, and at least the device the OS booted from, is to be booted at `/' (the root directory). Although all functioning storage devices (and partitions) are mounted automatically, they may be unmounted at any time. The kernel may also reference a configuration file which may blacklist certain disks/ partitions from being mounted automatically, or even at all.
+The /System/ directory contains subdirectories Bin/, Boot/, Config/, Doc/, Include/, Lib/, Share/, and Source/. The purposes of these directories seem fairly obvious. DragonOS's kernel is at /System/kernel-major.minor.arch (major = major version, minor = minor version, arch = [ x86, amd64 ]). Boot/ contains all of the files used by the boot loader, including initial boot configuration files. The whole /System/ directory and /Applications/ are owned by the root user. This prevents normal users from altering important files, and allows administers to easily customize their system.
 
 =Initialization and Configuration=
 The installed kernel binary has a module package applied to it. The kernel initializes all of the drivers (which are usually generic) contained within that package. The kernel proceeds to read a (small) configuration file, which gives an absolutely basic understanding of the environment the kernel is in. If the configuration file built into the package contained a path to another configuration file, the new configuration file would be loaded.
