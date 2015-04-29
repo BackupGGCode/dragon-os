@@ -1,0 +1,76 @@
+# Overview #
+The DragonOS kernel ("Colonel") is the engine of DragonOS. All of the other processes are basically peripherals and luxuries. None of them would be of any use without Colonel. This document aims to perfectly describe the design and implementation goals (whether acheived or not) of Colonel. It elaborates on the design decisions and the plans of Colonel.  Because DragonOS is meant to be used as a gaming operating system, Colonel has given graphics, sound, and input development priority over general application development. It is important to note that file system and full architecture support is of a higher priority than that.
+
+# General Design #
+Colonel is a monolithic/hybrid kernel for DragonOS. Colonel barely does anything at the highest privilege. Rather, it sends sub-processes that exist in user land to handle as many tasks as possible. Colonel follows a microkernel design to stay as secure as possible. To keep performance fairly high, Colonel is optimized where ever possible to bring the best performance while remaining at the highest level of security.  Colonel is intended to have full support for the Intel architectures (32-bit, 64-bit), MIPS, ARM, and SPARC.  Colonel enters into a graphical mode as soon as possible.
+
+# Drivers #
+Drivers are ELF executables that are loaded into their own address space and handled via the Extensible Driver Interface (EDI). This allows drivers to be shared with hobby based operating systems. This is subject to change, however.
+
+# Applications #
+Applications are dealt with in a special way. Following an Android OS styled model, applications are split into different types: Activities, and services. An activity is an app which takes up screen space (and thus has its own workspace), a service is an app which does not take up any screen space. When an application is launched, it is either launched as an activity, or as a service. When an application is launched as an activity, it is given a space on the screen just for it. This takes up the whole screen except for the bar at the top. (Read dragon\_design.txt for more information.)
+
+# Processes and Threads #
+A process is simply a virtual address space. A thread is an execution context within an address space. Each thread consumes CPU time, and is given a priority.
+
+The CPU timer is set to go off every 10 milliseconds (100 times a second), each priority level represents 5 milliseconds. The lowest acceptable priority level is 1. Due to the 10 millisecond timer, a thread will alternate between -5ms and +5ms. Following is an example:
+
+> Let T = a single timer interrupt, 10 milliseconds.
+
+> Let A represent thread 1 of process 1.
+> Let B represent thread 2 of process 1.
+> Let C represent thread 3 of process 1.
+> `A' has a priority level of 1; 5ms.
+> `B' has a priority level of 3; 15ms.
+> `C' has a priority level of 4; 20ms.
+
+> Cycle 1:
+> > `B' runs at a duration of T1.
+> > `C' runs at a duration of T2.
+
+> Cycle 2:
+> > `A' runs at a duration of T1.
+> > `B' runs at a duration of T2.
+> > `C' runs at a duration of T2.
+
+> Cycle 3:
+> > `B' runs at a duration of T1.
+> > `C' runs at a duration of T2.
+
+At the end of every two cycles, as you can see above, the thread running time will have been the total amount of time the thread expected for those two cycles. Clearly, if a thread sets itself to a priority of one, it considers itself fairly unimportant, performance wise. Therefore, the skipping of the process between cycles should be acceptable.
+
+NOTE: Apps can YIELD the remainder of their current time slice, or a number of time slices, to the scheduler to "fund" other apps. There are some restrictions, however. First, the YIELD call will wait for the next timer interrupt to occur before any effect is taken. (This does not mean code after YIELD will run, but that YIELD will, basically, wait for the rest of the current time slice to complete before the app is switched out.) Second, YIELD cannot give time to any specific app. Although, it would be an interesting concept--and could help in a few scenarious--it will not be done out of malicious concerns.
+
+Some processes are not constantly active. Aside from processes which continuously yield their time, there are also ```service'' processes. ```Services,'' as I will refer to them, are basically user-mode drivers. They can be activated when necessary, and might be activated many times on regular schedules. For example, every time the mouse moves, a hardware interrupt (known as an IRQ) will signal the mouse driver. The mouse driver will then calculate the new position, and,--if it's different from the previous position,--it will signal the XX-core server's GX branch. The GX process might then prepare to render a new frame.
+
+NOTE: The X-eXperience core (XX-core) is a collection of APIs which certain drivers must conform to, and applications may take advantage of. These APIs are:
+
+> Graphic eXperience (GX); the rendering API
+> Audio eXperience (AX); the sound/music API
+> Input eXperience (IX); the gaming input API
+> User Interface eXperience (UX); the windowing API
+
+Learn more in the XX-core.txt document.
+
+# Virtual File System #
+The VFS of DragonOS is somewhat UNIX/Mac-like. The VFS begins at the standard root directory, "/." Within the root directory, several mounts exist. Applications, Devices, Home, System, and Volumes. Devices is the "Devices" file system, it lists hardware connected to the computer. System is a mount of the OS's installation directory. Applications is the mount of the OS's graphical applications directory. Home is the mount of the OS's home directory (where users go). The Volumes directory is an initially empty directory that doesn't physically exist on disk. Rather, it is an area for storage device partitions may be mounted.
+
+All names in the VFS are case sensitive, unless a case insensitive file system previously mounted is being used. The VFS follows standard UNIX practices in regards to path specifications.
+
+The devices FS lists all storage devices, human interface devices, video/audio devices, and other devices that can logically be interacted with via ioctl() commands and/or fread()/fwrite() commands.
+
+The /System/ directory contains subdirectories Bin/, Boot/, Config/, Doc/, Include/, Lib/, Share/, and Source/. The purposes of these directories seem fairly obvious. DragonOS's kernel is at /System/kernel-major.minor.arch (major = major version, minor = minor version, arch = ( x86, or amd64 )). Boot/ contains all of the files used by the boot loader, including initial boot configuration files. The whole /System/ directory and /Applications/ are owned by the root user. This prevents normal users from altering important files, and allows administers to easily customize their system.
+
+# Initialization and Configuration #
+The installed kernel binary has a module package applied to it. The kernel initializes all of the drivers (which are usually generic) contained within that package. The kernel proceeds to read a (small) configuration file, which gives an absolutely basic understanding of the environment the kernel is in. If the configuration file built into the package contained a path to another configuration file, the new configuration file would be loaded.
+
+NOTE: It is standard practice in DragonOS to give a configuration file a ```.conf'' extension. If, for some reason, a four letter extension is not available, ```.cnf'' will do.
+
+The configuration files may point to other configuration files. All configuration files can provide a queue of startup programs for the kernel to execute.
+
+The XX-core API doubles as a driver specification. After all kernel mode and file system drivers have been loaded, the XX-core API will be initialized. The API will attempt to use the drivers it requires; if the attempt fails, the OS will NOT continue loading. It will instead dump an error to the screen, and present a terminal. The terminal can be used for rebooting, attempting to rectify the problem, et cetera. The terminal would exist in text-mode if GX failed to load. If UX failed to load, the terminal would be graphical.
+
+NOTE: If AX or IX fails to load, XX-core is not considered as having failed to load. Rather, warnings would be presented by the UX API at start-up.
+
+
+~_INCOMPLETE DOCUMENT_~

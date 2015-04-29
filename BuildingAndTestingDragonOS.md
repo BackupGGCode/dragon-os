@@ -1,0 +1,11 @@
+# Virtualization (Testing) #
+New versions of DragonOS will rely on the use of VirtualBox; you will need the ability to run VirtualBox with 64-bit support. VirtualBox isn't necessarilly required, but is highly recommended.
+
+# Operating System (Development) #
+DragonOS is developed in Linux. I (Aaron Miller) use LinuxMint 8.0 64-bit (a varient of Ubuntu 9.10, Karmic Koala). You'll need to have nasm 2.x, gcc-4.4, make 3.81, binutils-2.20 installed. The following terminal command line actions should satisfy this:
+`sudo apt-get install nasm gcc-4.4 binutils-2.20 make`
+
+Your version of GCC will also need to be able to export 64-bit code, and have C and C++ language support. C++ is required mainly for the XX-core based modules of DragonOS. C is used for the entire kernel, and most miscellaneous drivers.
+
+# XX-core #
+XX-core is a collection of multimedia/gaming driver interfaces. It is composed of the GX (graphics), IX (input), AX (audio), and UX (user-interface) modules. The UX module is a unique interface to abstract the windowing system; this allows for one system to be programmed for which supports a large variety of additional systems. AxioSoft intends to provide versions of this API for Linux, Mac OS X, and Windows (in that order) to help application developers maintain a consistent cross platform interface for their applications. This is just a short description of XX-core to explain why C++ compilation support is needed; it's supported at a core level of DragonOS.
